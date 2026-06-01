@@ -3,7 +3,7 @@ import { sGet, sSet } from "./supabase";
 import {
   Lock, Check, ChevronLeft, ChevronRight, Flame,
   LogOut, Moon, Droplets, Dumbbell, Heart, Zap,
-  Wind, Activity, DollarSign, BookOpen, TrendingUp,
+  Wind, Activity, DollarSign, BookOpen, TrendingUp, Sparkles,
 } from "lucide-react";
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -94,6 +94,21 @@ const CSS = `
   .workout-textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13px; resize: none; outline: none; font-family: var(--font); min-height: 72px; }
   .workout-textarea:focus { border-color: var(--accent); }
   .workout-textarea::placeholder { color: var(--muted); }
+
+  /* Gratitude */
+  .gratitude-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+  .gratitude-card.has-entries { border-color: #f59e0b; }
+  .gratitude-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .gratitude-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(245,158,11,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gratitude-title { font-size: 15px; font-weight: 500; flex: 1; }
+  .gratitude-count { font-size: 12px; color: var(--muted); }
+  .gratitude-items { display: flex; flex-direction: column; gap: 8px; }
+  .gratitude-item { display: flex; align-items: flex-start; gap: 10px; }
+  .gratitude-num { width: 24px; height: 24px; border-radius: 50%; background: rgba(245,158,11,0.15); color: #f59e0b; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 9px; }
+  .gratitude-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13px; resize: none; outline: none; font-family: var(--font); min-height: 44px; line-height: 1.5; }
+  .gratitude-input:focus { border-color: #f59e0b; }
+  .gratitude-input::placeholder { color: var(--muted); }
+  .gratitude-input:disabled { opacity: 0.5; cursor: default; }
 
   /* Calendar */
   .calendar-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
@@ -205,7 +220,6 @@ export default function App() {
     const hash = await sha256(pw.trim());
     const stored = await sGet("dt_pw");
     if (!stored) {
-      // First time — set password
       await sSet("dt_pw", hash);
       await sSet("dt_auth", true);
       setAuthed(true);
@@ -223,7 +237,6 @@ export default function App() {
     setPw("");
   }
 
-  // Save days to Supabase
   async function saveDay(newDays: Record<string, any>) {
     setDays(newDays);
     setSaving(true);
@@ -254,12 +267,19 @@ export default function App() {
   function setWorkoutNotes(v: string) {
     updateEntry(e => { e.workoutNotes = v; return e; });
   }
+  function setGratitude(index: number, v: string) {
+    updateEntry(e => {
+      const g = [...(e.gratitude || ["", "", ""])];
+      g[index] = v;
+      e.gratitude = g;
+      return e;
+    });
+  }
 
   // Streak
   const streak = useMemo(() => {
     let s = 0;
     let d = today();
-    // if today isn't done yet, start from yesterday
     if (scoreDay(days[keyOf(d)]) < TOTAL) d = addDays(d, -1);
     while (true) {
       const k = keyOf(d);
@@ -390,7 +410,6 @@ export default function App() {
 
             return (
               <div key={h.id} className={"habit-card" + (isDone ? " done" : "")}>
-                {/* Main row */}
                 <div
                   className="habit-row"
                   onClick={() => {
@@ -420,7 +439,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Star rating expanded */}
                 {h.type === "stars" && !locked && (
                   <>
                     <Stars value={starVal} onChange={v => setStars(h.id, v)} />
@@ -430,7 +448,6 @@ export default function App() {
                   </>
                 )}
 
-                {/* Money toggle */}
                 {h.type === "money" && !locked && (
                   <div className="money-row">
                     <button className={"money-btn save" + (entry.money === "save" ? " on" : "")} onClick={() => setMoney("save")}>
@@ -442,7 +459,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Workout notes — show when checked */}
                 {h.type === "workout" && checked && !locked && (
                   <div className="workout-notes">
                     <textarea
@@ -458,6 +474,43 @@ export default function App() {
             );
           })}
         </div>
+
+        {/* Gratitude */}
+        <div className="section-title">Gratitude</div>
+        {(() => {
+          const gratitude: string[] = entry.gratitude || ["", "", ""];
+          const filledCount = gratitude.filter((g: string) => g.trim().length > 0).length;
+          return (
+            <div className={"gratitude-card" + (filledCount > 0 ? " has-entries" : "")}>
+              <div className="gratitude-header">
+                <div className="gratitude-icon">
+                  <Sparkles size={18} color="#f59e0b" />
+                </div>
+                <span className="gratitude-title">What are you grateful for today?</span>
+                <span className="gratitude-count">{filledCount}/3</span>
+              </div>
+              <div className="gratitude-items">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="gratitude-item">
+                    <div className="gratitude-num">{i + 1}</div>
+                    <textarea
+                      className="gratitude-input"
+                      placeholder={
+                        i === 0 ? "I'm grateful for…" :
+                        i === 1 ? "Something that made me smile…" :
+                        "A person or moment I appreciate…"
+                      }
+                      value={gratitude[i] || ""}
+                      onChange={e => setGratitude(i, e.target.value)}
+                      disabled={locked}
+                      rows={2}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Stats */}
         <div className="section-title">Last 30 Days</div>
