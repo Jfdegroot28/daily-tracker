@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { signUp, signIn, signOut, getSession, sGet, sSet, supabase } from "./supabase";
 import {
-  Lock, Check, ChevronLeft, ChevronRight, Flame,
+  Check, ChevronLeft, ChevronRight, Flame,
   LogOut, Moon, Droplets, Dumbbell, Heart, Zap,
-  Wind, Activity, DollarSign, BookOpen, Sparkles, Mail,
+  Wind, Activity, DollarSign, BookOpen, Sparkles, Mail, Lock,
 } from "lucide-react";
 
 const CSS = `
@@ -137,10 +137,22 @@ const HABITS = [
 ];
 
 const TOTAL = HABITS.length;
-const keyOf = (d: Date) => d.toISOString().slice(0, 10);
+
+const keyOf = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const today = () => new Date();
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const isFuture = (d: Date) => d > today();
+const isFuture = (d: Date) => {
+  const t = today();
+  return d.getFullYear() > t.getFullYear() ||
+    (d.getFullYear() === t.getFullYear() && d.getMonth() > t.getMonth()) ||
+    (d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() > t.getDate());
+};
 
 function scoreDay(entry: any): number {
   if (!entry) return 0;
@@ -192,7 +204,7 @@ export default function App() {
       }
       setBooted(true);
     })();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
         setUserEmail(session.user.email ?? "");
@@ -213,7 +225,7 @@ export default function App() {
     try {
       if (mode === "signup") {
         await signUp(email.trim(), password);
-        setAuthOk("Account created! Check your email to confirm, then sign in.");
+        setAuthOk("Account created! You can now sign in.");
         setMode("signin");
       } else {
         await signIn(email.trim(), password);
@@ -228,7 +240,8 @@ export default function App() {
   async function handleLogout() { await signOut(); }
 
   async function saveDay(uid: string, newDays: Record<string, any>) {
-    setDays(newDays); setSaving(true);
+    setDays(newDays);
+    setSaving(true);
     await sSet(uid, "dt_days", newDays);
     setSaving(false);
   }
